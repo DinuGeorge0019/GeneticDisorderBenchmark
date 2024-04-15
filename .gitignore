@@ -1,0 +1,7 @@
+universal_bm_venv/
+__pycache__/
+.tmp.driveupload/
+.tmp.drivedownload/
+catboost_info/
+gnn_models/
+nn_models/
