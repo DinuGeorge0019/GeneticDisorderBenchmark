@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import time
 import psutil
+import GPUtil
 
 from sklearn.metrics import accuracy_score, recall_score, mean_squared_error, precision_score, f1_score
 from sklearn.linear_model import LogisticRegression
@@ -27,18 +28,27 @@ class DecisionTreeWrapper():
         self.estimator = estimator
         self.training_time = None
         self.training_ram_used = None
-        self.training_cpu_used = None
+        self.training_cpu_load_used = None
+        self.training_gpu_load_used = None
+        self.training_gpu_ram_used = None
         self.testing_time = None
         self.testing_ram_used = None
-        self.testing_cpu_used = None
+        self.testing_cpu_load_used = None
+        self.testing_gpu_load_used = None
+        self.testing_gpu_ram_used = None
         
     def fit(self, X, y=None, **kwargs):
         # Create a Process object for the current process
         process = psutil.Process(os.getpid())
+        gpus = GPUtil.getGPUs()
+        gpu = gpus[0]
         
         # Before training
         mem_before = process.memory_info().rss / (1024.0 ** 3)
         cpu_before = process.cpu_percent(interval=1)
+        gpu_load_before = gpu.load*100
+        gpu_ram_before = gpu.memoryUsed
+        
         start_time = time.time()
 
         # Training
@@ -48,10 +58,14 @@ class DecisionTreeWrapper():
         end_time = time.time()
         mem_after = process.memory_info().rss / (1024.0 ** 3)
         cpu_after = process.cpu_percent(interval=1)
+        gpu_load_after = gpu.load*100
+        gpu_ram_after = gpu.memoryUsed
         
         self.training_time = end_time - start_time
+        self.training_cpu_load_used = cpu_after - cpu_before
         self.training_ram_used = mem_after - mem_before
-        self.training_cpu_used = cpu_after - cpu_before
+        self.training_gpu_load_used = gpu_load_after - gpu_load_before
+        self.training_gpu_ram_used = gpu_ram_after - gpu_ram_before
         
         return fit_result
     
@@ -120,17 +134,22 @@ class DecisionTreeEvaluator(ModelEvaluator):
 
         scores = {
             'training_time (s)': self.models_collection[model_name].training_time,
+            'training_cpu_load_used (%)': self.models_collection[model_name].training_cpu_load_used,
             'training_ram_used (GB)': self.models_collection[model_name].training_ram_used,
-            'training_cpu_used (%)': self.models_collection[model_name].training_cpu_used,
+            'training_gpu_load_used (%)': self.models_collection[model_name].training_gpu_load_used,
+            'training_gpu_ram_used (GB)': self.models_collection[model_name].training_gpu_ram_used,
             'testing_time (s)': self.models_collection[model_name].testing_time,
+            'testing_cpu_load_used (%)': self.models_collection[model_name].testing_cpu_load_used,
             'testing_ram_used (GB)': self.models_collection[model_name].testing_ram_used,
-            'testing_cpu_used (%)': self.models_collection[model_name].testing_cpu_used,
+            'testing_gpu_load_used (%)': self.models_collection[model_name].testing_gpu_load_used,
+            'testing_gpu_ram_used (GB)': self.models_collection[model_name].testing_gpu_ram_used,
             'mse': mse,
             'accuracy': accuracy,
             'precision': precision,
             'recall': recall,
             'f1': f1
         }
+        
         scores = {key: str(value) for key, value in scores.items()}
         csv_headers = ['Model Name'] + list(scores.keys())
         output_data = [f'{model_name}'] + list(scores.values())

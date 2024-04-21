@@ -1,0 +1,2 @@
+Model Name,training_time (s),training_cpu_load_used (%),training_ram_used (GB),training_gpu_load_used (%),training_gpu_ram_used (GB),testing_time (s),testing_cpu_load_used (%),testing_ram_used (GB),testing_gpu_load_used (%),testing_gpu_ram_used (GB),mse,accuracy,precision,recall,f1
+PyTorchNN_20240421_213740,53.51586842536926,48.4,0.005401611328125,0.0,0.0,0.02087545394897461,None,0.02111053466796875,None,None,1.250415512465374,0.6013850415512465,0.5925518464641313,0.6013850415512465,0.5958790368016716

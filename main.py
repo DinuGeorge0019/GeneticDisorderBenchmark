@@ -12,7 +12,7 @@ import torch
 
 # local library specific imports
 from app_cfg import Config
-from app_src import DatasetBuilder, DecisionTreeEvaluator, KerasNNEvaluator
+from app_src import DatasetBuilder, DecisionTreeEvaluator, KerasNNEvaluator, PyTorchNNEvaluator
 
 # get global configuration
 CONFIG = Config.get_config()
@@ -47,11 +47,13 @@ def main():
     datasetBuilder = DatasetBuilder()
     decisionTreeEvaluator = DecisionTreeEvaluator()
     kerasNNEvaluator = KerasNNEvaluator()
+    torchNNEvaluator = PyTorchNNEvaluator()
     
     arguments = [
         ("create_train_test_dataset", datasetBuilder.create_dataset, "Build train and test dataset"),
         ("benchmark_decision_trees", decisionTreeEvaluator.benchmark_models, "Train and Evaluate decision trees"),
-        ("benchmark_keras_nn", kerasNNEvaluator.benchmark_model, "Train and Evaluate Keras Neural Network")
+        ("benchmark_keras_nn", kerasNNEvaluator.benchmark_model, "Train and Evaluate Keras Neural Network"),
+        ("benchmark_torch_nn", torchNNEvaluator.benchmark_model, "Train and Evaluate Torch Neural Network")
     ]
 
     for arg, _, description in arguments:

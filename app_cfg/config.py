@@ -17,6 +17,7 @@ class Config():
             'DATASET_LOG_PATH': '__output/dataset_info/dataset_distribution.log',
             'BENCHMARK_DECISION_TREES_PATH': '__output/benchmark_decision_trees/benchmark_decision_trees.csv',
             'BENCHMARK_KERAS_NN_PATH': '__output/benchmark_keras_nn/benchmark_keras_nn.csv',
+            'BENCHMARK_TORCH_NN_PATH': '__output/benchmark_torch_nn/benchmark_torch_nn.csv',
         }
         
         return config
