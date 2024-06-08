@@ -283,6 +283,14 @@ class PyTorchNNEvaluator(ModelEvaluator):
             # Append the DataFrame to an existing CSV file
             df.to_csv(CONFIG['BENCHMARK_TORCH_NN_PATH'], index=False, mode='a', header=False)
     
+    def plot_failed_predictions(self, failed_predictions_per_class):
+        # Plot the number of failed predictions for each class
+        plt.figure(figsize=(10, 5))
+        plt.bar(range(len(failed_predictions_per_class)), failed_predictions_per_class)
+        plt.title('Number of Failed Predictions for Each Class')
+        plt.xlabel('Class')
+        plt.ylabel('Number of Failed Predictions')
+        plt.show()
 
     def benchmark_model(self):
         print('Benchmarking PyTorch Neural Network')
@@ -310,3 +318,10 @@ class PyTorchNNEvaluator(ModelEvaluator):
         self.test_genetic_disorder_y = self.test_genetic_disorder_y.cpu().numpy().squeeze()
         date_time = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.__compute_metrics(f'PyTorchNN_{date_time}', model, test_predictions)
+        
+        
+        # Calculate the number of failed predictions for each class
+        failed_predictions = np.where(self.test_genetic_disorder_y != test_predictions, 1, 0)
+        failed_predictions_per_class = np.bincount(self.test_genetic_disorder_y[failed_predictions == 1])
+
+        self.plot_failed_predictions(failed_predictions_per_class)

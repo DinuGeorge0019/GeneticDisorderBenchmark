@@ -1,9 +1,11 @@
 
 import os
 import pandas as pd
+import numpy as np
 import time
 import psutil
 import GPUtil
+import matplotlib.pyplot as plt
 
 from sklearn.metrics import accuracy_score, recall_score, mean_squared_error, precision_score, f1_score
 from sklearn.linear_model import LogisticRegression
@@ -163,11 +165,26 @@ class DecisionTreeEvaluator(ModelEvaluator):
         else:
             # Append the DataFrame to an existing CSV file
             df.to_csv(CONFIG['BENCHMARK_DECISION_TREES_PATH'], index=False, mode='a', header=False)
-        
+
+    def plot_failed_predictions(self, failed_predictions_per_class):
+        # Plot the number of failed predictions for each class
+        plt.figure(figsize=(10, 5))
+        plt.bar(range(len(failed_predictions_per_class)), failed_predictions_per_class)
+        plt.title('Number of Failed Predictions for Each Class')
+        plt.xlabel('Class')
+        plt.ylabel('Number of Failed Predictions')
+        plt.show()
+
     def benchmark_models(self):
         for model_name, model in self.models_collection.items():
             print('Benchmarking model:', model_name)
             model.fit(self.train_genetic_disorder_x, self.train_genetic_disorder_y)
             predictions = model.predict(self.test_genetic_disorder_x)
             self.__compute_metrics(model_name, predictions)
+            
+            # Calculate the number of failed predictions for each class
+            failed_predictions = np.where(self.test_genetic_disorder_y != predictions, 1, 0)
+            failed_predictions_per_class = np.bincount(self.test_genetic_disorder_y[failed_predictions == 1])
+
+            self.plot_failed_predictions(failed_predictions_per_class)
     
