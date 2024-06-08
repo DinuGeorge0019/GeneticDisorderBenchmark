@@ -8,6 +8,8 @@ import time
 from datetime import datetime
 import GPUtil
 
+import matplotlib.pyplot as plt
+
 from sklearn.metrics import accuracy_score, recall_score, mean_squared_error, precision_score, f1_score
 from sklearn.model_selection import train_test_split
 from keras.utils import to_categorical
@@ -167,8 +169,6 @@ class KerasNNEvaluator(ModelEvaluator):
         return tuner, best_hps
     
     def __compute_metrics(self, model_name, model, predictions):
-        print(self.test_genetic_disorder_y.shape)
-        print(predictions.shape)
         
         mse = mean_squared_error(self.test_genetic_disorder_y, predictions)
         accuracy = accuracy_score(self.test_genetic_disorder_y, predictions)
@@ -207,7 +207,32 @@ class KerasNNEvaluator(ModelEvaluator):
         else:
             # Append the DataFrame to an existing CSV file
             df.to_csv(CONFIG['BENCHMARK_KERAS_NN_PATH'], index=False, mode='a', header=False)
-            
+
+    def plot_training_history(self, history):
+        # summarize history for accuracy
+        plt.figure(figsize=(10,5))
+        plt.subplot(1, 2, 1)
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+
+        # summarize history for loss
+        plt.subplot(1, 2, 2)
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+
+        # Save the figure
+        plt.savefig(CONFIG['BENCHMARK_KERAS_NN_TRAIN_GRAPH_PATH'] + f'/training_history_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
+        plt.close()
+
+    
     def benchmark_model(self):
         print('Benchmarking Keras Neural Network')
         
@@ -218,7 +243,7 @@ class KerasNNEvaluator(ModelEvaluator):
         # Build the model with the optimal hyperparameters and train it on the data
         model = KerassNNModelWrapper(tuner.hypermodel.build(best_hps))
 
-        model.fit(
+        history = model.fit(
             self.train_genetic_disorder_x, 
             self.train_genetic_disorder_y, 
             epochs=self.epochs, 
@@ -227,7 +252,9 @@ class KerasNNEvaluator(ModelEvaluator):
                 self.val_genetic_disorder_y
             )
         )
-                
+        
+        self.plot_training_history(history)
+        
         print('Start Evaluating Keras Neural Network')
         # Make predictions on the testing dataset
         test_predictions = model.predict(self.test_genetic_disorder_x)

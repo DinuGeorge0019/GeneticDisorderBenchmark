@@ -18,6 +18,8 @@ class Config():
             'BENCHMARK_DECISION_TREES_PATH': '__output/benchmark_decision_trees/benchmark_decision_trees.csv',
             'BENCHMARK_KERAS_NN_PATH': '__output/benchmark_keras_nn/benchmark_keras_nn.csv',
             'BENCHMARK_TORCH_NN_PATH': '__output/benchmark_torch_nn/benchmark_torch_nn.csv',
+            'BENCHMARK_KERAS_NN_TRAIN_GRAPH_PATH': '__output/benchmark_keras_nn/graphs',
+            'BENCHMARK_TORCH_NN_TRAIN_GRAPH_PATH': '__output/benchmark_torch_nn/graphs'
         }
         
         return config

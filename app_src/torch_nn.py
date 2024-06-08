@@ -4,6 +4,7 @@ import numpy as np
 import psutil
 import time
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 from sklearn.metrics import accuracy_score, recall_score, mean_squared_error, precision_score, f1_score
 from sklearn.model_selection import train_test_split
@@ -55,11 +56,40 @@ class PyTorchNNModelWrapper():
         self.testing_cpu_load_used = None
         self.testing_gpu_load_used = None
         self.testing_gpu_ram_used = None
-    
+        
+        self.train_loss = []
+        self.val_loss = []
+        self.train_accuracy = []
+        self.val_accuracy = []
+        
     def parameters(self):
         return self.estimator.parameters()
+    
+    def validation(self, val_data, val_dataloader, criterion):
+        self.estimator.eval()  # set the model to evaluation mode
+        total_epoch_val_loss = 0
+        correct_val_predictions = 0
+
+        with torch.no_grad():  # disable gradient calculation
+            for inputs, labels in val_dataloader:
+                outputs = self.estimator(inputs)
+                loss = criterion(outputs, labels)
+
+                # Calculate accuracy
+                _, predicted = torch.max(outputs.data, 1)
+                correct_val_predictions += (predicted == labels).sum().item()
+
+            total_epoch_val_loss += loss.cpu().item()
+            epoch_val_accuracy = correct_val_predictions / len(val_data)
+
+            print(f'Validation: loss = {total_epoch_val_loss / len(val_dataloader)}, accuracy = {epoch_val_accuracy}')
+            self.val_loss.append(total_epoch_val_loss / len(val_dataloader))
+            self.val_accuracy.append(epoch_val_accuracy)
+            
+        self.estimator.train()  # set the model back to training mode
         
-    def fit(self, train_genetic_disorder_x, train_genetic_disorder_y, epochs, batchs, criterion, optimizer):
+    
+    def fit(self, train_genetic_disorder_x, train_genetic_disorder_y, val_genetic_disorder_x, val_genetic_disorder_y, epochs, batchs, criterion, optimizer):
         # Create a Process object for the current process
         process = psutil.Process(os.getpid())
         gpus = GPUtil.getGPUs()
@@ -80,24 +110,40 @@ class PyTorchNNModelWrapper():
             train_genetic_disorder_y
         )
         
+        val_data = TensorDataset(
+            val_genetic_disorder_x,
+            val_genetic_disorder_y
+        )
+        
         train_dataloader = DataLoader(train_data, batch_size=batchs, shuffle=True)
+        val_dataloader = DataLoader(val_data, batch_size=batchs, shuffle=True)
 
         for epoch in range(epochs):
             self.estimator.train()
             total_epoch_train_loss = 0
-                
+            correct_predictions = 0
+            
             for inputs, labels in train_dataloader:
                 optimizer.zero_grad()
                                 
                 outputs = self.estimator(inputs)
                 loss = criterion(outputs, labels)
                 
+                # Calculate accuracy
+                _, predicted = torch.max(outputs.data, 1)
+                correct_predictions += (predicted == labels).sum().item()
+                
                 loss.backward()
                 optimizer.step()
                 
             total_epoch_train_loss += loss.cpu().item()
-        
-            print(f'Epoch {epoch + 1}/{epochs}: loss = {total_epoch_train_loss / len(train_dataloader)}')
+            epoch_accuracy = correct_predictions / len(train_data)
+
+            print(f'Epoch {epoch + 1}/{epochs}: train loss = {total_epoch_train_loss / len(train_dataloader)} train accuracy = {epoch_accuracy}')
+            self.train_loss.append(total_epoch_train_loss / len(train_dataloader))
+            self.train_accuracy.append(epoch_accuracy)
+            
+            self.validation(val_data, val_dataloader, criterion)  # Perform validation at the end of each epoch
                 
         # After training
         end_time = time.time()
@@ -112,7 +158,33 @@ class PyTorchNNModelWrapper():
         self.training_gpu_load_used = gpu_load_after - gpu_load_before
         self.training_gpu_ram_used = gpu_ram_after - gpu_ram_before
         
-            
+    def plot_training_history(self, train_loss, train_accuracy, val_loss, val_accuracy):
+        # summarize history for accuracy
+        plt.figure(figsize=(10,5))
+        plt.subplot(1, 2, 1)
+        plt.plot(train_accuracy)
+        plt.plot(val_accuracy)
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+
+        # summarize history for loss
+        plt.subplot(1, 2, 2)
+        plt.plot(train_loss)
+        plt.plot(val_loss)
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+
+        plt.tight_layout()
+        
+        # Save the figure
+        plt.savefig(CONFIG['BENCHMARK_TORCH_NN_TRAIN_GRAPH_PATH'] + f'/training_history_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png')
+        plt.close()
+
+
     def predict(self, X):
         # Create a Process object for the current process
         process = psutil.Process(os.getpid())
@@ -132,6 +204,8 @@ class PyTorchNNModelWrapper():
         self.testing_time = end_time - start_time
         self.testing_ram_used = mem_after - mem_before
         self.testing_cpu_used = cpu_after - cpu_before
+        
+        self.plot_training_history(self.train_loss, self.train_accuracy, self.val_loss, self.val_accuracy)
         
         return predict_result
 
@@ -171,8 +245,6 @@ class PyTorchNNEvaluator(ModelEvaluator):
         return model
     
     def __compute_metrics(self, model_name, model, predictions):
-        print(self.test_genetic_disorder_y.shape)
-        print(predictions.shape)
         
         mse = mean_squared_error(self.test_genetic_disorder_y, predictions)
         accuracy = accuracy_score(self.test_genetic_disorder_y, predictions)
@@ -224,6 +296,8 @@ class PyTorchNNEvaluator(ModelEvaluator):
         model.fit(
             self.train_genetic_disorder_x,
             self.train_genetic_disorder_y,
+            self.val_genetic_disorder_x,
+            self.val_genetic_disorder_y,
             epochs=self.epochs,
             batchs=self.batchs,
             criterion=criterion,
